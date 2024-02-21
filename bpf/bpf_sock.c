@@ -132,14 +132,6 @@ struct {
 	__uint(max_entries, LB4_REVERSE_NAT_SK_MAP_SIZE);
 } LB4_REVERSE_NAT_SK_MAP __section_maps_btf;
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct skip_lb4_key);
-	__type(value, __u8);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
-	__uint(max_entries, CILIUM_LB_SKIP_MAP_MAX_ENTRIES);
-	__uint(map_flags, BPF_F_NO_PREALLOC);
-} LB4_SKIP_MAP __section_maps_btf;
 
 static __always_inline int sock4_update_revnat(struct bpf_sock_addr *ctx,
 					       const struct lb4_backend *backend,
@@ -658,13 +650,6 @@ struct {
 	__uint(max_entries, LB6_REVERSE_NAT_SK_MAP_SIZE);
 } LB6_REVERSE_NAT_SK_MAP __section_maps_btf;
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct skip_lb6_key);
-	__type(value, __u8);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
-	__uint(max_entries, CILIUM_LB_SKIP_MAP_MAX_ENTRIES);
-} LB6_SKIP_MAP __section_maps_btf;
 
 static __always_inline int sock6_update_revnat(struct bpf_sock_addr *ctx,
 					       const struct lb6_backend *backend,

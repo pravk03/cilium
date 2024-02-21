@@ -92,9 +92,27 @@ struct {
 	});
 } LB6_MAGLEV_MAP_OUTER __section_maps_btf;
 #endif /* LB_SELECTION == LB_SELECTION_MAGLEV */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct skip_lb6_key);
+	__type(value, __u8);
+	__uint(pinning, LIBBPF_PIN_BY_NAME);
+	__uint(max_entries, CILIUM_LB_SKIP_MAP_MAX_ENTRIES);
+} LB6_SKIP_MAP __section_maps_btf;
+
 #endif /* ENABLE_IPV6 */
 
 #ifdef ENABLE_IPV4
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct skip_lb4_key);
+	__type(value, __u8);
+	__uint(pinning, LIBBPF_PIN_BY_NAME);
+	__uint(max_entries, CILIUM_LB_SKIP_MAP_MAX_ENTRIES);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+} LB4_SKIP_MAP __section_maps_btf;
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, __u16);

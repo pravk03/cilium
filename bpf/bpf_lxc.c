@@ -72,6 +72,45 @@
 #ifdef ENABLE_PER_PACKET_LB
 
 #ifdef ENABLE_IPV4
+
+#ifdef ENABLE_LOCAL_REDIRECT_POLICY
+/* Service translation logic for a local-redirect service can cause packets to
+ * be looped back to a service node-local backend after translation. This can
+ * happen when the node-local backend itself tries to connect to the service
+ * frontend for which it acts as a backend. There are cases where this can break
+ * traffic flow if the backend needs to forward the redirected traffic to the
+ * actual service frontend. Hence, allow service translation for pod traffic
+ * getting redirected to backend (across network namespaces), but skip service
+ * translation for backend to itself or another service backend within the same
+ * namespace. Currently only v4 and v4-in-v6, but no plain v6 is supported.
+ *
+ * For example, in EKS cluster, a local-redirect service exists with the AWS
+ * metadata IP, port as the frontend <169.254.169.254, 80> and kiam proxy as a
+ * backend Pod. When traffic destined to the frontend originates from the kiam
+ * Pod in namespace ns1 (host ns when the kiam proxy Pod is deployed in
+ * hostNetwork mode or regular Pod ns) and the Pod is selected as a backend, the
+ * traffic would get looped back to the proxy Pod. Identify such cases by doing
+ * a socket lookup for the backend <ip, port> in its namespace, ns1, and skip
+ * service translation.
+ */
+static __always_inline bool
+lb4_skip_xlate_from_ctx_to_svc(__net_cookie cookie,
+				 __be32 address __maybe_unused, __be16 port __maybe_unused)
+{
+	struct skip_lb4_key key;
+	__u8 *val = NULL;
+
+	memset(&key, 0, sizeof(key));
+	key.netns_cookie = cookie;
+	key.address = address;
+	key.port = port;
+	val = map_lookup_elem(&LB4_SKIP_MAP, &key);
+	if (val)
+		return true;
+	return false;
+}
+#endif /* ENABLE_LOCAL_REDIRECT_POLICY */
+
 static __always_inline int __per_packet_lb_svc_xlate_4(void *ctx, struct iphdr *ip4,
 						       __s8 *ext_err)
 {
@@ -110,10 +149,19 @@ static __always_inline int __per_packet_lb_svc_xlate_4(void *ctx, struct iphdr *
 		 * redirect services based on user configured policies. Per packet LB should
 		 * not override LB decisions made for local-redirect services in bpf_sock.
 		 */
-#if defined(ENABLE_LOCAL_REDIRECT_POLICY) && defined(ENABLE_SOCKET_LB_FULL)
+#if defined(ENABLE_LOCAL_REDIRECT_POLICY) 
+	#if defined(ENABLE_SOCKET_LB_FULL)
 		if (unlikely(lb4_svc_is_localredirect(svc)))
 			goto skip_service_lookup;
-#endif /* ENABLE_LOCAL_REDIRECT_POLICY && ENABLE_SOCKET_LB_FULL */
+	#endif /* ENABLE_SOCKET_LB_FULL */
+	
+	#ifdef HAVE_NETNS_COOKIE
+		if (unlikely(lb4_svc_is_localredirect(svc)) && unlikely(lb4_skip_xlate_from_ctx_to_svc(ENDPOINT_NETNS_COOKIE, tuple.daddr, tuple.sport)))
+			goto skip_service_lookup;
+	#endif
+
+#endif /* ENABLE_LOCAL_REDIRECT_POLICY  */
+
 		ret = lb4_local(get_ct_map4(&tuple), ctx, ipv4_is_fragment(ip4),
 				ETH_HLEN, l4_off, &key, &tuple, svc, &ct_state_new,
 				has_l4_header, false, &cluster_id, ext_err);
@@ -135,6 +183,46 @@ skip_service_lookup:
 #endif /* ENABLE_IPV4 */
 
 #ifdef ENABLE_IPV6
+
+#ifdef ENABLE_LOCAL_REDIRECT_POLICY
+
+/* Service translation logic for a local-redirect service can cause packets to
+ * be looped back to a service node-local backend after translation. This can
+ * happen when the node-local backend itself tries to connect to the service
+ * frontend for which it acts as a backend. There are cases where this can break
+ * traffic flow if the backend needs to forward the redirected traffic to the
+ * actual service frontend. Hence, allow service translation for pod traffic
+ * getting redirected to backend (across network namespaces), but skip service
+ * translation for backend to itself or another service backend within the same
+ * namespace. Currently only v4 and v4-in-v6, but no plain v6 is supported.
+ *
+ * For example, in EKS cluster, a local-redirect service exists with the AWS
+ * metadata IP, port as the frontend <169.254.169.254, 80> and kiam proxy as a
+ * backend Pod. When traffic destined to the frontend originates from the kiam
+ * Pod in namespace ns1 (host ns when the kiam proxy Pod is deployed in
+ * hostNetwork mode or regular Pod ns) and the Pod is selected as a backend, the
+ * traffic would get looped back to the proxy Pod. Identify such cases by doing
+ * a socket lookup for the backend <ip, port> in its namespace, ns1, and skip
+ * service translation.
+ */
+static __always_inline bool
+lb6_skip_xlate_from_ctx_to_svc(__net_cookie cookie,
+				 union v6addr addr __maybe_unused, __be16 port __maybe_unused)
+{
+	struct skip_lb6_key key;
+	__u8 *val = NULL;
+
+	memset(&key, 0, sizeof(key));
+	key.netns_cookie = cookie;
+	key.address = addr;
+	key.port = port;
+	val = map_lookup_elem(&LB6_SKIP_MAP, &key);
+	if (val)
+		return true;
+	return false;
+}
+#endif /* ENABLE_LOCAL_REDIRECT_POLICY */
+
 static __always_inline int __per_packet_lb_svc_xlate_6(void *ctx, struct ipv6hdr *ip6,
 						       __s8 *ext_err)
 {
@@ -172,10 +260,18 @@ static __always_inline int __per_packet_lb_svc_xlate_6(void *ctx, struct ipv6hdr
 		}
 #endif /* ENABLE_L7_LB */
 		/* See comment in __per_packet_lb_svc_xlate_4. */
-#if defined(ENABLE_LOCAL_REDIRECT_POLICY) && defined(ENABLE_SOCKET_LB_FULL)
+#if defined(ENABLE_LOCAL_REDIRECT_POLICY) 
+    #if defined(ENABLE_SOCKET_LB_FULL)
 		if (unlikely(lb6_svc_is_localredirect(svc)))
 			goto skip_service_lookup;
-#endif /* ENABLE_LOCAL_REDIRECT_POLICY && ENABLE_SOCKET_LB_FULL */
+	#endif /*  ENABLE_SOCKET_LB_FULL*/
+
+	#ifdef HAVE_NETNS_COOKIE
+		if (unlikely(lb6_svc_is_localredirect(svc)) && unlikely(lb6_skip_xlate_from_ctx_to_svc(ENDPOINT_NETNS_COOKIE, tuple.daddr, tuple.sport)))
+			goto skip_service_lookup;
+	#endif
+
+#endif /* ENABLE_LOCAL_REDIRECT_POLICY */
 		ret = lb6_local(get_ct_map6(&tuple), ctx, ETH_HLEN, l4_off,
 				&key, &tuple, svc, &ct_state_new, false, ext_err);
 
