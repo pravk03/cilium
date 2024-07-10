@@ -20,25 +20,27 @@ var (
 )
 
 type TestEndpoint struct {
-	Id       uint64
-	Identity *identity.Identity
-	Opts     *option.IntOptions
-	MAC      mac.MAC
-	IfIndex  int
-	IPv6     netip.Addr
-	isHost   bool
-	State    string
+	Id          uint64
+	Identity    *identity.Identity
+	Opts        *option.IntOptions
+	MAC         mac.MAC
+	IfIndex     int
+	IPv6        netip.Addr
+	isHost      bool
+	State       string
+	NetNsCookie uint64
 }
 
 func NewTestEndpoint() TestEndpoint {
 	opts := option.NewIntOptions(&option.OptionLibrary{})
 	opts.SetBool("TEST_OPTION", true)
 	return TestEndpoint{
-		Id:       42,
-		Identity: defaultIdentity,
-		MAC:      mac.MAC([]byte{0x02, 0x00, 0x60, 0x0D, 0xF0, 0x0D}),
-		IfIndex:  0,
-		Opts:     opts,
+		Id:          42,
+		Identity:    defaultIdentity,
+		MAC:         mac.MAC([]byte{0x02, 0x00, 0x60, 0x0D, 0xF0, 0x0D}),
+		IfIndex:     0,
+		Opts:        opts,
+		NetNsCookie: 0,
 	}
 }
 
@@ -69,6 +71,7 @@ func (e *TestEndpoint) GetIdentityLocked() identity.NumericIdentity { return e.I
 func (e *TestEndpoint) GetSecurityIdentity() *identity.Identity     { return e.Identity }
 func (e *TestEndpoint) GetNodeMAC() mac.MAC                         { return e.MAC }
 func (e *TestEndpoint) GetIfIndex() int                             { return e.IfIndex }
+func (e *TestEndpoint) GetEndpointNetnsCookie() int                 { return int(e.NetNsCookie) }
 func (e *TestEndpoint) GetOptions() *option.IntOptions              { return e.Opts }
 func (e *TestEndpoint) IsHost() bool                                { return e.isHost }
 

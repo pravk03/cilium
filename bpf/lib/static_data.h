@@ -44,8 +44,8 @@
 	 */ \
 	__u64 out; \
 	/* In BPF, referring to a global variable directly from C code will generally
-	 * result in 2 instructions: 1) loading an array map pointer into a register,
-	 * and 2) dereferencing the map pointer at the offset where the variable is
+	 * result in 2 instructions: 1 loading an array map pointer into a register,
+	 * and 2 dereferencing the map pointer at the offset where the variable is
 	 * located. The first instruction carries a relocation entry against the map,
 	 * so the loader can update the instruction to carry the map's file
 	 * descriptor after the map has been created, before loading the program.
@@ -78,6 +78,7 @@
 /* Deprecated, use CONFIG instead. */
 #define fetch_u16(x) CONFIG(x)
 #define fetch_u32(x) CONFIG(x)
+#define fetch_u64(x) CONFIG(x)
 #define fetch_ipv6(x) CONFIG(x ## _1), CONFIG(x ## _2)
 #define fetch_mac(x) { { CONFIG(x ## _1), (__u16)CONFIG(x ## _2) } }
 
@@ -88,6 +89,9 @@
 #define DEFINE_U32(name, value) \
 	DECLARE_CONFIG(__u32, name, "Constant " #name " declared using DEFINE_U32") \
 	ASSIGN_CONFIG(__u32, name, value)
+#define DEFINE_U64(name, value) \
+	DECLARE_CONFIG(__u64, name, "Constant " #name " declared using DEFINE_U64") \
+	ASSIGN_CONFIG(__u64, name, value)
 
 /* DEFINE_IPV6 and DEFINE_MAC are used to assign values to global constants from
  * C headers generated at runtime before the datapath is compiled. This data

@@ -28,6 +28,7 @@ const (
 	templateLxcID               = uint16(65535)
 	templatePolicyVerdictFilter = uint32(0xffff)
 	templateIfIndex             = math.MaxUint32
+	templateEndpointNetNsCookie = uint64(0)
 )
 
 var (
@@ -99,6 +100,18 @@ func (t *templateCfg) GetIdentity() identity.NumericIdentity {
 // locked.
 func (t *templateCfg) GetIdentityLocked() identity.NumericIdentity {
 	return templateSecurityID
+}
+
+// GetEndpointNetnsCookie returns a invalid (zero) network namespace cookie.
+func (t *templateCfg) GetEndpointNetnsCookie() uint64 {
+	return templateEndpointNetNsCookie
+}
+
+// GetEndpointNetnsCookieLocked is identical to GetEndpointNetnsCookie(). This is a temporary
+// function until WriteEndpointConfig() no longer assumes that the endpoint is
+// locked.
+func (t *templateCfg) GetEndpointNetnsCookieLocked() uint64 {
+	return templateEndpointNetNsCookie
 }
 
 // GetNodeMAC returns a well-known dummy MAC address which may be later
@@ -251,6 +264,8 @@ func ELFVariableSubstitutions(ep datapath.Endpoint) map[string]uint64 {
 		result["LXC_ID"] = uint64(ep.GetID())
 		result["THIS_INTERFACE_IFINDEX"] = uint64(ep.GetIfIndex())
 	}
+
+	result["ENDPOINT_NETNS_COOKIE"] = ep.GetEndpointNetnsCookie()
 
 	// Contrary to IPV4_MASQUERADE, we cannot use a simple #define and
 	// avoid introducing a symbol in stubs.h for IPV6_MASQUERADE. So the

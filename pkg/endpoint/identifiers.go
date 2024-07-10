@@ -168,3 +168,8 @@ func (e *Endpoint) GetEndpointNetnsCookie() uint64 {
 	defer e.runlock()
 	return e.NetNsCookie
 }
+
+// GetEndpointNetnsCookieLocked is identical to GetEndpointNetnsCookie(). This is needed because WriteEndpointConfig() assumes that the endpoint is locked.
+func (e *Endpoint) GetEndpointNetnsCookieLocked() uint64 {
+	return e.NetNsCookie
+}
